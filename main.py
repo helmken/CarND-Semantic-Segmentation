@@ -121,7 +121,7 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     # debugging hint: capital P in Print is important: adds a Print node to
     # the tensorflow graph - printing is done during session run
-    tf.Print(vgg_layer7_trans, [tf.shape(vgg_layer7_trans)])
+    # tf.Print(vgg_layer7_trans, [tf.shape(vgg_layer7_trans)])
 
 
     # TODO: skip connections: concept from classroom FCN-8 - Decoder
@@ -154,11 +154,16 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     
     # classroom: 09 FCN-8 Classification & Loss
     
-    logits = tf.reshape(input, (-1, num_classes))
+    logits = tf.reshape(nn_last_layer, (-1, num_classes))
+    labels = tf.reshape(correct_label, (-1, num_classes))
     
-    train_op = ...
-    
-    cross_entropy_loss = ...
+    cross_entropy_loss = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(
+            labels = labels, logits = logits))
+
+    # train_op = train_nn # TODO: use this instead of AdamOptimizer?
+    train_op = tf.train.AdamOptimizer(learning_rate) \
+        .minimize(cross_entropy_loss)
     
     return logits, train_op, cross_entropy_loss
 
@@ -196,6 +201,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
     
     pass
 
+print('running tests.test_train_nn(train_nn)')
 tests.test_train_nn(train_nn)
 
 
