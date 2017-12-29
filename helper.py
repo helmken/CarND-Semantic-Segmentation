@@ -59,18 +59,22 @@ def maybe_download_pretrained_vgg(data_dir):
 
 
 def gen_batch_function(data_folder, image_shape):
+
     """
     Generate function to create batches of training data
     :param data_folder: Path to folder that contains all the datasets
     :param image_shape: Tuple - Shape of image
     :return:
     """
+
     def get_batches_fn(batch_size):
+
         """
         Create batches of training data
         :param batch_size: Batch Size
         :return: Batches of training data
         """
+
         image_paths = glob(os.path.join(data_folder, 'image_2', '*.png'))
         label_paths = {
             re.sub(r'_(lane|road)_', '_', os.path.basename(path)): path
@@ -95,6 +99,7 @@ def gen_batch_function(data_folder, image_shape):
                 gt_images.append(gt_image)
 
             yield np.array(images), np.array(gt_images)
+    
     return get_batches_fn
 
 
