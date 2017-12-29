@@ -7,7 +7,8 @@ import project_tests as tests
 
 
 # Check TensorFlow Version
-assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
+assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), \
+    'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
 print('TensorFlow Version: {}'.format(tf.__version__))
 
 # Check for a GPU
@@ -18,12 +19,14 @@ else:
 
 
 def load_vgg(sess, vgg_path):
+    
     """
     Load Pretrained VGG Model into TensorFlow.
     :param sess: TensorFlow Session
     :param vgg_path: Path to vgg folder, containing "variables/" and "saved_model.pb"
     :return: Tuple of Tensors from VGG model (image_input, keep_prob, layer3_out, layer4_out, layer7_out)
     """
+    
     # TODO: Implement function
     #   Use tf.saved_model.loader.load to load the model and weights
     vgg_tag = 'vgg16'
@@ -32,12 +35,25 @@ def load_vgg(sess, vgg_path):
     vgg_layer3_out_tensor_name = 'layer3_out:0'
     vgg_layer4_out_tensor_name = 'layer4_out:0'
     vgg_layer7_out_tensor_name = 'layer7_out:0'
+
+    # load the graph from the file
+    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
     
-    return None, None, None, None, None
+    graph = tf.get_default_graph()
+    w1 = graph.get_tensor_by_name(vgg_input_tensor_name)
+    keep = graph.get_tensor_by_name(vgg_keep_prob_tensor_name)
+    layer3 = graph.get_tensor_by_name(vgg_layer3_out_tensor_name)
+    layer4 = graph.get_tensor_by_name(vgg_layer4_out_tensor_name)
+    layer7 = graph.get_tensor_by_name(vgg_layer7_out_tensor_name)
+    
+    return w1, keep, layer3, layer4, layer7
+
+print('running tests.test_load_vgg')
 tests.test_load_vgg(load_vgg, tf)
 
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
+    
     """
     Create the layers for a fully convolutional network.  Build skip-layers using the vgg layers.
     :param vgg_layer7_out: TF Tensor for VGG Layer 3 output
@@ -46,12 +62,49 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
+    
     # TODO: Implement function
+    # num_classes: binary classification: is pixel road or not road?
+    # kernel size is 1, because of 1x1 convolution
+    kernel_size = 1
+    
+    # regularizer is important to avoid overfitting and producing garbage
+    # regularizer avoids weights getting too large
+    
+    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, kernel_size, 
+                                padding = 'same', 
+                                kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # upsample to image size with deconvolution/transpose convolution
+    kernel_size = 4
+    strides = 2 # stride causes upsampling by 2
+    output = tf.layers.conv2d_transpose(
+        conv_1x1, 
+        num_classes,
+        kernel_size, 
+        strides, 
+        padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # debugging hint:
+    tf.Print(output, [tf.shape(output)]) # capital P in Print is important: adds a print node to the tensorflow graph
+    
+    # TODO: skip connections: concept from classroom FCN-8 - Decoder
+    # right padding has to be used!
+    # also use regularizer
+    
+    # up-sample with 2, then by 2 and then by 8 - see classroom for strides (2, 2), (2, 2), (8, 8)
+    # separate by pooling
+    
+    # final output has to have the same size as image
+    
     return None
+
 tests.test_layers(layers)
 
 
 def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
+
     """
     Build the TensorFLow loss and optimizer operations.
     :param nn_last_layer: TF Tensor of the last layer in the neural network
@@ -60,13 +113,26 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     :param num_classes: Number of classes to classify
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
+    
     # TODO: Implement function
-    return None, None, None
+    
+    # classroom: 09 FCN-8 Classification & Loss
+    
+    logits = tf.reshape(input, (-1, num_classes))
+    
+    train_op = ...
+    
+    cross_entropy_loss = ...
+    
+    return logits, train_op, cross_entropy_loss
+
 tests.test_optimize(optimize)
 
 
-def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
+def train_nn(sess, epochs, batch_size, get_batches_fn, 
+             train_op, cross_entropy_loss, input_image,
              correct_label, keep_prob, learning_rate):
+
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -80,8 +146,18 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
+
     # TODO: Implement function
+    
+    for epoch in epochs:
+        for image, label in get_batches_fn(batch_size):
+            feed_dict = {}
+            
+            loss = session.run() # functions implemented as TODOs
+    
+    
     pass
+
 tests.test_train_nn(train_nn)
 
 
@@ -109,6 +185,8 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
+        input_image, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
+        final_layer = layers(layer3, layer4, layer7, num_classes)
 
         # TODO: Train NN using the train_nn function
 
