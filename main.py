@@ -8,7 +8,8 @@ import project_tests as tests
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), \
-    'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
+    'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(
+        tf.__version__)
 print('TensorFlow Version: {}'.format(tf.__version__))
 
 # Check for a GPU
@@ -23,8 +24,10 @@ def load_vgg(sess, vgg_path):
     """
     Load Pretrained VGG Model into TensorFlow.
     :param sess: TensorFlow Session
-    :param vgg_path: Path to vgg folder, containing "variables/" and "saved_model.pb"
-    :return: Tuple of Tensors from VGG model (image_input, keep_prob, layer3_out, layer4_out, layer7_out)
+    :param vgg_path: Path to vgg folder, containing "variables/" 
+        and "saved_model.pb"
+    :return: Tuple of Tensors from VGG model (image_input, keep_prob, 
+        layer3_out, layer4_out, layer7_out)
     """
     
     # TODO: Implement function
@@ -55,46 +58,50 @@ tests.test_load_vgg(load_vgg, tf)
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     """
-    Create the layers for a fully convolutional network.  Build skip-layers using the vgg layers.
-    :param vgg_layer7_out: TF Tensor for VGG Layer 3 output
-    :param vgg_layer4_out: TF Tensor for VGG Layer 4 output
-    :param vgg_layer3_out: TF Tensor for VGG Layer 7 output
+    Create the layers for a fully convolutional network.  Build skip-layers 
+    using the vgg layers.
+    :param vgg_layer7_out: TF Tensor for output of VGG Layer 3
+    :param vgg_layer4_out: TF Tensor for output of VGG Layer 4
+    :param vgg_layer3_out: TF Tensor for output of VGG Layer 7
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
     
     # TODO: Implement function
-    # num_classes: binary classification: is pixel road or not road?
-    # kernel size is 1, because of 1x1 convolution
-    kernel_size = 1
     
-    # regularizer is important to avoid overfitting and producing garbage
+    # num_classes: binary classification: is pixel road or not road? 
+    #     -> 2 classes
+    
     # regularizer avoids weights getting too large
+    # regularizer is important to avoid overfitting and producing garbage
     
-    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, kernel_size, 
-                                padding = 'same', 
-                                kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
-    
-    # upsample to image size with deconvolution/transpose convolution
-    kernel_size = 4
-    strides = 2 # stride causes upsampling by 2
-    output = tf.layers.conv2d_transpose(
-        conv_1x1, 
-        num_classes,
-        kernel_size, 
-        strides, 
+    conv_1x1 = tf.layers.conv2d(
+        vgg_layer7_out, num_classes, 
+        kernel_size = 1,                # 1x1 convolution 
         padding = 'same', 
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
-    # debugging hint:
-    tf.Print(output, [tf.shape(output)]) # capital P in Print is important: adds a print node to the tensorflow graph
+    # upsample to image size with deconvolution/transpose convolution
+    output = tf.layers.conv2d_transpose(
+        conv_1x1, 
+        num_classes,
+        kernel_size = 4,                # up-sampling 
+        strides = 2,                    # stride causes upsampling by 2, 
+        padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # debugging hint: capital P in Print is important: adds a print node to
+    # the tensorflow graph
+    tf.Print(output, [tf.shape(output)]) 
     
     # TODO: skip connections: concept from classroom FCN-8 - Decoder
     # right padding has to be used!
     # also use regularizer
     
-    # up-sample with 2, then by 2 and then by 8 - see classroom for strides (2, 2), (2, 2), (8, 8)
-    # separate by pooling
+    # up-sample with 2, then by 2 and then by 8 - see classroom for strides
+    # (2, 2), (2, 2), (8, 8)
+    
+    # separate by pooling layers
     
     # final output has to have the same size as image
     
