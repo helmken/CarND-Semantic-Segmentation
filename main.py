@@ -30,26 +30,25 @@ def load_vgg(sess, vgg_path):
         layer3_out, layer4_out, layer7_out)
     """
     
-    # TODO: Implement function
-    #   Use tf.saved_model.loader.load to load the model and weights
+    # Use tf.saved_model.loader.load to load the model and weights
+    # from the file
     vgg_tag = 'vgg16'
+    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
+    graph = tf.get_default_graph()
+
     vgg_input_tensor_name = 'image_input:0'
     vgg_keep_prob_tensor_name = 'keep_prob:0'
     vgg_layer3_out_tensor_name = 'layer3_out:0'
     vgg_layer4_out_tensor_name = 'layer4_out:0'
     vgg_layer7_out_tensor_name = 'layer7_out:0'
 
-    # load the graph from the file
-    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
-    
-    graph = tf.get_default_graph()
-    w1 = graph.get_tensor_by_name(vgg_input_tensor_name)
-    keep = graph.get_tensor_by_name(vgg_keep_prob_tensor_name)
+    image_input = graph.get_tensor_by_name(vgg_input_tensor_name)
+    keep_prob = graph.get_tensor_by_name(vgg_keep_prob_tensor_name)
     layer3 = graph.get_tensor_by_name(vgg_layer3_out_tensor_name)
     layer4 = graph.get_tensor_by_name(vgg_layer4_out_tensor_name)
     layer7 = graph.get_tensor_by_name(vgg_layer7_out_tensor_name)
     
-    return w1, keep, layer3, layer4, layer7
+    return image_input, keep_prob, layer3, layer4, layer7
 
 print('running tests.test_load_vgg')
 tests.test_load_vgg(load_vgg, tf)
@@ -58,7 +57,7 @@ tests.test_load_vgg(load_vgg, tf)
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     """
-    Create the layers for a fully convolutional network.  Build skip-layers 
+    Create the layers for a fully convolutional network. Build skip-layers 
     using the vgg layers.
     :param vgg_layer7_out: TF Tensor for output of VGG Layer 3
     :param vgg_layer4_out: TF Tensor for output of VGG Layer 4
@@ -69,44 +68,74 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     # TODO: Implement function
     
-    # num_classes: binary classification: is pixel road or not road? 
+    # num_classes: binary classification: "is pixel road or not road?" 
     #     -> 2 classes
     
-    # regularizer avoids weights getting too large
+    # regularizer avoids weights getting too large, 
     # regularizer is important to avoid overfitting and producing garbage
     
-    conv_1x1 = tf.layers.conv2d(
-        vgg_layer7_out, num_classes, 
-        kernel_size = 1,                # 1x1 convolution 
+    # instead of fully connected classifier, append 1x1 convolution to
+    # vgg_layer7
+    layer7_1x1 = tf.layers.conv2d(
+        vgg_layer7_out, num_classes, kernel_size = 1, padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # same for vgg_layer4
+    layer4_1x1 = tf.layers.conv2d(
+        vgg_layer4_out, num_classes, kernel_size = 1, padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # and for vgg_layer3
+    layer3_1x1 = tf.layers.conv2d(
+        vgg_layer3_out, num_classes, kernel_size = 1, padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+
+
+    # decoder part: upsample to original layer size with transpose convolutions
+    vgg_layer7_trans = tf.layers.conv2d_transpose(
+        layer7_1x1, num_classes, 
+        kernel_size = 4, strides = (2, 2), # up-sampling 
         padding = 'same', 
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
-    # upsample to image size with deconvolution/transpose convolution
-    output = tf.layers.conv2d_transpose(
-        conv_1x1, 
-        num_classes,
-        kernel_size = 4,                # up-sampling 
-        strides = 2,                    # stride causes upsampling by 2, 
+    # skip connection from vgg_layer4 to up-sampled vgg_layer7
+    vgg_layer7_skip = tf.add(layer4_1x1, vgg_layer7_trans)
+
+
+    vgg_layer4_trans = tf.layers.conv2d_transpose(
+        vgg_layer7_skip, num_classes,
+        kernel_size = 4, strides = (2, 2), # up-sampling 
         padding = 'same', 
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
-    # debugging hint: capital P in Print is important: adds a print node to
-    # the tensorflow graph
-    tf.Print(output, [tf.shape(output)]) 
+    # skip connection from vgg_layer3 to up-sampled vgg_layer4
+    vgg_layer4_skip = tf.add(layer3_1x1, vgg_layer4_trans)
+
+
+    vgg_layer3_trans = tf.layers.conv2d_transpose(
+        vgg_layer4_skip, num_classes,
+        kernel_size = 16, strides = (8, 8), # up-sampling 
+        padding = 'same', 
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
+    
+    # debugging hint: capital P in Print is important: adds a Print node to
+    # the tensorflow graph - printing is done during session run
+    tf.Print(vgg_layer7_trans, [tf.shape(vgg_layer7_trans)])
+
+
     # TODO: skip connections: concept from classroom FCN-8 - Decoder
-    # right padding has to be used!
-    # also use regularizer
+    # the right padding has to be used, also use a regularizer
     
     # up-sample with 2, then by 2 and then by 8 - see classroom for strides
     # (2, 2), (2, 2), (8, 8)
     
-    # separate by pooling layers
-    
     # final output has to have the same size as image
     
-    return None
-
+    return vgg_layer3_trans 
+    
+    
+print('running tests.test_layers(layers)')
 tests.test_layers(layers)
 
 
@@ -133,6 +162,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     
     return logits, train_op, cross_entropy_loss
 
+
+print('running tests.test_optimize(optimize)')
 tests.test_optimize(optimize)
 
 
