@@ -99,21 +99,21 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
     # skip connection from vgg_layer4 to up-sampled vgg_layer7
-    vgg_layer7_skip = tf.add(layer4_1x1, vgg_layer7_trans)
+    vgg_layer4_skip = tf.add(layer4_1x1, vgg_layer7_trans)
 
 
     vgg_layer4_trans = tf.layers.conv2d_transpose(
-        vgg_layer7_skip, num_classes,
+        vgg_layer4_skip, num_classes,
         kernel_size = 4, strides = (2, 2), # up-sampling 
         padding = 'same', 
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
     
     # skip connection from vgg_layer3 to up-sampled vgg_layer4
-    vgg_layer4_skip = tf.add(layer3_1x1, vgg_layer4_trans)
+    vgg_layer3_skip = tf.add(layer3_1x1, vgg_layer4_trans)
 
 
     vgg_layer3_trans = tf.layers.conv2d_transpose(
-        vgg_layer4_skip, num_classes,
+        vgg_layer3_skip, num_classes,
         kernel_size = 16, strides = (8, 8), # up-sampling 
         padding = 'same', 
         kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
