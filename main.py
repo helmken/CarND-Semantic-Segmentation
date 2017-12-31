@@ -1,6 +1,7 @@
 import os.path
 import tensorflow as tf
 import helper
+import datetime
 import time
 import warnings
 from distutils.version import LooseVersion
@@ -76,17 +77,20 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # vgg_layer7
     layer7_1x1 = tf.layers.conv2d(
         vgg_layer7_out, num_classes, kernel_size = 1, padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
     
     # same for vgg_layer4
     layer4_1x1 = tf.layers.conv2d(
         vgg_layer4_out, num_classes, kernel_size = 1, padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
     
     # and for vgg_layer3
     layer3_1x1 = tf.layers.conv2d(
         vgg_layer3_out, num_classes, kernel_size = 1, padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
 
 
     # decoder part: upsample to original layer size with transpose convolutions
@@ -94,7 +98,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
         layer7_1x1, num_classes, 
         kernel_size = 4, strides = (2, 2), # up-sampling 
         padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
     
     # skip connection from vgg_layer4 to up-sampled vgg_layer7
     vgg_layer4_skip = tf.add(layer4_1x1, vgg_layer7_trans)
@@ -104,7 +109,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
         vgg_layer4_skip, num_classes,
         kernel_size = 4, strides = (2, 2), # up-sampling 
         padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
     
     # skip connection from vgg_layer3 to up-sampled vgg_layer4
     vgg_layer3_skip = tf.add(layer3_1x1, vgg_layer4_trans)
@@ -114,7 +120,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
         vgg_layer3_skip, num_classes,
         kernel_size = 16, strides = (8, 8), # up-sampling 
         padding = 'same', 
-        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3))
+        kernel_regularizer = tf.contrib.layers.l2_regularizer(1e-3),
+        kernel_initializer = tf.truncated_normal_initializer(stddev = 0.01))
     
     # debugging hint: capital P in Print is important: adds a Print node to
     # the tensorflow graph - printing is done during session run
@@ -144,6 +151,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     cross_entropy_loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(
             labels = labels, logits = logits))
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    cross_entropy_loss = cross_entropy_loss + sum(reg_losses)
 
     train_op = tf.train.AdamOptimizer(learning_rate) \
         .minimize(cross_entropy_loss)
@@ -176,6 +185,8 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
         
         print('training epoch', epoch)
         t_start = time.time()
+        loss_sum = 0.0
+        image_count = 0
         
         for image, label in get_batches_fn(batch_size):
             
@@ -186,9 +197,12 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
             _, loss = sess.run([train_op, cross_entropy_loss],
                                feed_dict = feed_dict)
             
-            #print('loss=', loss)
-        
-        print('epoch {}: duration: {}'.format(epoch, time.time() - t_start))
+            loss_sum += loss
+            image_count += 1
+
+        loss_avg = loss_sum / image_count        
+        print('epoch {}: duration: {} s, avg loss: {}'.format(
+            epoch, time.time() - t_start, loss_avg))
 
 tests.test_train_nn(train_nn)
 
@@ -207,7 +221,8 @@ def run():
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     # https://www.cityscapes-dataset.com/
 
-    epochs = 32
+    #epochs = 32
+    epochs = 1
     batch_size = 1
     
     with tf.Session() as sess:
@@ -243,10 +258,14 @@ def run():
             sess.run(tf.global_variables_initializer())
             
             print('start training')
+            time_start = time.time()
             train_nn(sess, epochs, batch_size, get_batches_fn, 
                      train_op, cross_entropy_loss, 
                      image_input, correct_label, 
                      keep_prob, learning_rate)
+            time_training = time.time() - time_start
+            print('training time: {}', datetime.timedelta(seconds = time_training))
+            
     
             print('saving inference data')
             helper.save_inference_samples(runs_dir, data_dir, sess, image_shape,
