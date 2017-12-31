@@ -8,17 +8,22 @@ from distutils.version import LooseVersion
 import project_tests as tests
 
 
+RUN_TESTS = False
+
+
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), \
     'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(
         tf.__version__)
 print('TensorFlow Version: {}'.format(tf.__version__))
 
-# Check for a GPU
-if not tf.test.gpu_device_name():
-    warnings.warn('No GPU found. Please use a GPU to train your neural network.')
-else:
-    print('Default GPU Device: {}'.format(tf.test.gpu_device_name()))
+
+if RUN_TESTS:
+    # Check for a GPU
+    if not tf.test.gpu_device_name():
+        warnings.warn('No GPU found. Please use a GPU to train your neural network.')
+    else:
+        print('Default GPU Device: {}'.format(tf.test.gpu_device_name()))
 
 
 def load_vgg(sess, vgg_path):
@@ -52,7 +57,8 @@ def load_vgg(sess, vgg_path):
     
     return image_input, keep_prob, layer3, layer4, layer7
 
-tests.test_load_vgg(load_vgg, tf)
+if RUN_TESTS:
+    tests.test_load_vgg(load_vgg, tf)
 
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
@@ -129,7 +135,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     return vgg_layer3_trans 
     
-tests.test_layers(layers)
+if RUN_TESTS:
+    tests.test_layers(layers)
 
 
 def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
@@ -149,7 +156,7 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     labels = tf.reshape(correct_label, (-1, num_classes))
     
     cross_entropy_loss = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(
+        tf.nn.softmax_cross_entropy_with_logits_v2(
             labels = labels, logits = logits))
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     cross_entropy_loss = cross_entropy_loss + sum(reg_losses)
@@ -159,7 +166,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     
     return logits, train_op, cross_entropy_loss
 
-tests.test_optimize(optimize)
+if RUN_TESTS:
+    tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, 
@@ -205,7 +213,8 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
         print('epoch {}: duration: {}, avg loss: {}'.format(
             epoch, datetime.timedelta(seconds = time_epoch), loss_avg))
 
-tests.test_train_nn(train_nn)
+if RUN_TESTS:
+    tests.test_train_nn(train_nn)
 
 
 def run():
@@ -222,27 +231,28 @@ def run():
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     # https://www.cityscapes-dataset.com/
 
-    epochs = 32
+    # Path to vgg model
+    vgg_path = os.path.join(data_dir, 'vgg')
+
+    # Create function to get batches
+    get_batches_fn = helper.gen_batch_function(
+        os.path.join(data_dir, 'data_road/training'), image_shape)
+
+    #epochs = 32
+    epochs = 1
     batch_size = 1
     
     with tf.Session() as sess:
         
         #with tf.device("/gpu:0"):
+
         with tf.device("/cpu:0"):
+            # get layers from stored VGG
+            image_input, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
         
-            # Path to vgg model
-            vgg_path = os.path.join(data_dir, 'vgg')
-        
-            # Create function to get batches
-            get_batches_fn = helper.gen_batch_function(
-                os.path.join(data_dir, 'data_road/training'), image_shape)
-            
             # OPTIONAL: Augment Images for better results
             #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
     
-            # get layers from stored VGG
-            image_input, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
-            
             # create graph with skip connections, return last layer, inference part
             final_layer = layers(layer3, layer4, layer7, num_classes)
     
