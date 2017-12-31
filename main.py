@@ -1,6 +1,7 @@
 import os.path
 import tensorflow as tf
 import helper
+import time
 import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
@@ -171,22 +172,23 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
     :param learning_rate: TF Placeholder for learning rate
     """
 
-    # TODO: Implement function
-    
     for epoch in range(epochs):
         
         print('training epoch', epoch)
+        t_start = time.time()
+        
         for image, label in get_batches_fn(batch_size):
             
             feed_dict = {input_image : image, 
                          correct_label : label, 
-                         keep_prob : 0.5,
-                         learning_rate : 0.001} # TODO: is learning rate necessary for Adam Opt?
+                         keep_prob : 0.5}
             
             _, loss = sess.run([train_op, cross_entropy_loss],
                                feed_dict = feed_dict)
             
-            print('loss=', loss)
+            #print('loss=', loss)
+        
+        print('epoch {}: duration: {}'.format(epoch, time.time() - t_start))
 
 tests.test_train_nn(train_nn)
 
@@ -203,17 +205,11 @@ def run():
 
     # OPTIONAL: Train and Inference on the cityscapes dataset instead of the Kitti dataset.
     # You'll need a GPU with at least 10 teraFLOPS to train on.
-    #  https://www.cityscapes-dataset.com/
+    # https://www.cityscapes-dataset.com/
 
-    # TODO: these values are guessed from somewhere out of the blue
     epochs = 32
-    batch_size = 32
+    batch_size = 1
     
-    #config = tf.ConfigProto(log_device_placement=True)
-    #config.gpu_options.per_process_gpu_memory_fraction=0.3 # don't hog all vRAM
-    #config.operation_timeout_in_ms=50000   # terminate on long hangs
-    
-    #with tf.Session(config = config) as sess:
     with tf.Session() as sess:
         
         #with tf.device("/gpu:0"):
@@ -229,8 +225,6 @@ def run():
             # OPTIONAL: Augment Images for better results
             #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
     
-            # TODO: Build NN using load_vgg, layers, and optimize function
-            
             # get layers from stored VGG
             image_input, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
             
@@ -240,15 +234,13 @@ def run():
             correct_label = tf.placeholder(
                 tf.float32, 
                 [None, image_shape[0], image_shape[1], num_classes])
-            learning_rate = tf.placeholder(tf.float32)
+            learning_rate = tf.constant(0.0001)
             
             # continue with graph, add loss and training part
             logits, train_op, cross_entropy_loss = optimize(
                 final_layer, correct_label, learning_rate, num_classes)
     
             sess.run(tf.global_variables_initializer())
-            
-            # TODO: Train NN using the train_nn function
             
             print('start training')
             train_nn(sess, epochs, batch_size, get_batches_fn, 
@@ -257,7 +249,6 @@ def run():
                      keep_prob, learning_rate)
     
             print('saving inference data')
-            # TODO: Save inference data using helper.save_inference_samples
             helper.save_inference_samples(runs_dir, data_dir, sess, image_shape,
                                           logits, keep_prob, image_input)
     
