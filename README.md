@@ -2,6 +2,23 @@
 ### Introduction
 In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
 
+### Implementation
+
+##### Dataset
+The provided training set (`data/data_road/training`) contains images of roads (folder `image_2`) and ground truth images (folder `gt_image_2`). The ground truth images act as pixel annotations for training the FCN.
+![road scene](writeup_images/um_000000.png)
+road scene
+
+![ground truth image](writeup_images/um_lane_000000.png)
+ground truth of road scene
+
+In the ground truth image red pixels represent the background and magenta pixels the road/lane that the FCN is supposed to learn.
+
+##### Skip Layer Architecture
+The provided VGG 16 model shall be extended by two skip layers so that the result is a Fully Convolutional Network.
+![Skip Layer Architecture](writeup_images/skip_layer_architecture.png)
+
+
 ### Setup
 ##### Frameworks and Packages
 Make sure you have the following is installed:
@@ -31,6 +48,6 @@ python main.py
  - `main.py`
  - `project_tests.py`
  - Newest inference images from `runs` folder  (**all images from the most recent run**)
- 
+
  ## How to write a README
 A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
