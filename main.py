@@ -184,7 +184,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
     for epoch in range(epochs):
         
         print('training epoch', epoch)
-        t_start = time.time()
+        time_start = time.time()
         loss_sum = 0.0
         image_count = 0
         
@@ -199,10 +199,11 @@ def train_nn(sess, epochs, batch_size, get_batches_fn,
             
             loss_sum += loss
             image_count += 1
-
+            
+        time_epoch = time.time() - time_start
         loss_avg = loss_sum / image_count        
-        print('epoch {}: duration: {} s, avg loss: {}'.format(
-            epoch, time.time() - t_start, loss_avg))
+        print('epoch {}: duration: {}, avg loss: {}'.format(
+            epoch, datetime.timedelta(seconds = time_epoch), loss_avg))
 
 tests.test_train_nn(train_nn)
 
@@ -264,7 +265,7 @@ def run():
                      image_input, correct_label, 
                      keep_prob, learning_rate)
             time_training = time.time() - time_start
-            print('training time: {}', datetime.timedelta(seconds = time_training))
+            print('training time: ', datetime.timedelta(seconds = time_training))
             
     
             print('saving inference data')
