@@ -42,8 +42,8 @@ def load_vgg(sess, vgg_path):
     # from the file
     vgg_tag = 'vgg16'
 
-    with tf.device("/cpu:0"):
-        tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
+    #with tf.device("/cpu:0"):
+    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
 
     graph = tf.get_default_graph()
 
